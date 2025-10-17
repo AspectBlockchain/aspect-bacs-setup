@@ -2,21 +2,24 @@
 import express from "express";
 import Stripe from "stripe";
 import dotenv from "dotenv";
+
+// ✅ Load environment variables first
 dotenv.config();
 
 const app = express();
 app.use(express.static("public"));
 app.use(express.json());
 
+// ✅ Initialize Stripe with your secret key
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// IMPORTANT: use Render's PORT if provided
+// ✅ Use Render's port if available
 const PORT = process.env.PORT || 4242;
 
-// Use APP_BASE_URL for success/cancel URLs (set this in env)
+// ✅ Use environment variable for live base URL (fallback to localhost)
 const APP_BASE_URL = process.env.APP_BASE_URL || `http://localhost:${PORT}`;
 
-// Create Checkout session in setup mode for Bacs Direct Debit
+// ✅ Create Checkout session (Bacs Direct Debit setup)
 app.post("/create-checkout-session", async (req, res) => {
   try {
     const { email, name } = req.body;
@@ -38,7 +41,7 @@ app.post("/create-checkout-session", async (req, res) => {
   }
 });
 
-// (Optional) Webhook skeleton — add later when you want auto “set default” behavior
+// ✅ (Optional) Webhook — enable later if you want automatic default-payment setup
 // import bodyParser from "body-parser";
 // app.post("/webhook", bodyParser.raw({ type: "application/json" }), async (req, res) => {
 //   const sig = req.headers["stripe-signature"];
