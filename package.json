@@ -1,0 +1,23 @@
+{
+  "name": "aspect-bacs-setup",
+  "version": "1.0.0",
+  "description": "BACS Direct Debit setup integration for Stripe",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "stripe",
+    "bacs",
+    "direct-debit",
+    "aspect-blockchain"
+  ],
+  "author": "Aspect Blockchain",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "stripe": "^16.10.0"
+  }
+}
