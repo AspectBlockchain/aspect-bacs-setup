@@ -2,35 +2,27 @@
 import express from "express";
 import Stripe from "stripe";
 import dotenv from "dotenv";
-
-// ✅ Load environment variables
 dotenv.config();
 
 const app = express();
-app.use(express.static("public"));
-app.use(express.json());
-
-// ✅ Initialize Stripe with your secret key
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// ✅ Use Render's port or default to 4242
 const PORT = process.env.PORT || 4242;
-
-// ✅ Use your environment base URL (Render or localhost)
 const APP_BASE_URL = process.env.APP_BASE_URL || `http://localhost:${PORT}`;
 
-// ✅ Create Checkout Session (Bacs Direct Debit setup)
-app.post("/create-checkout-session", async (req, res) => {
+// ✅ Stripe-hosted Bacs Direct Debit setup page (no local HTML needed)
+app.get("/create-checkout-session", async (req, res) => {
   try {
-    const { email, name } = req.body;
+    const { email, name } = req.query;
 
-    console.log("🧾 Creating customer:", name, email);
+    if (!email || !name) {
+      return res.status(400).send("Missing name or email");
+    }
 
-    // Create or reuse customer
-    const customer = await stripe.customers.create({ name, email });
-    console.log("✅ Customer created:", customer.id);
+    console.log("🧾 Creating hosted checkout for:", name, email);
 
-    // Create checkout session in setup mode
+    const customer = await stripe.customers.create({ email, name });
+
     const session = await stripe.checkout.sessions.create({
       mode: "setup",
       payment_method_types: ["bacs_debit"],
@@ -39,44 +31,14 @@ app.post("/create-checkout-session", async (req, res) => {
       cancel_url: `${APP_BASE_URL}/cancel.html`,
     });
 
-    // 🧩 Debug line to show full session response
-    console.log("🔎 Full session response:", session);
-
-    console.log("✅ Stripe session created:", session.id);
-    res.json({ url: session.url });
+    console.log("✅ Hosted session created:", session.url);
+    res.redirect(session.url);
   } catch (err) {
     console.error("❌ Stripe error:", err);
-    res.status(400).json({ error: err.message });
+    res.status(400).send(err.message);
   }
 });
 
-// ✅ Optional webhook (enable later for auto “set default”)
-//// import bodyParser from "body-parser";
-//// app.post("/webhook", bodyParser.raw({ type: "application/json" }), async (req, res) => {
-////   const sig = req.headers["stripe-signature"];
-////   try {
-////     const event = stripe.webhooks.constructEvent(
-////       req.body,
-////       sig,
-////       process.env.STRIPE_WEBHOOK_SECRET
-////     );
-////
-////     if (event.type === "checkout.session.completed") {
-////       const session = event.data.object;
-////       const si = await stripe.setupIntents.retrieve(session.setup_intent);
-////       await stripe.customers.update(session.customer, {
-////         invoice_settings: { default_payment_method: si.payment_method },
-////       });
-////     }
-////
-////     res.sendStatus(200);
-////   } catch (e) {
-////     console.error(e);
-////     res.status(400).send(`Webhook Error: ${e.message}`);
-////   }
-//// });
-
-// ✅ Start server
 app.listen(PORT, () => {
   console.log(`✅ Server running on ${APP_BASE_URL}`);
 });
