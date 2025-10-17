@@ -2,8 +2,6 @@
 import express from "express";
 import Stripe from "stripe";
 import dotenv from "dotenv";
-
-// ✅ Load environment variables
 dotenv.config();
 
 const app = express();
@@ -12,39 +10,35 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const PORT = process.env.PORT || 4242;
 const APP_BASE_URL = process.env.APP_BASE_URL || `http://localhost:${PORT}`;
 
-// ✅ Health check route (optional)
-app.get("/", (req, res) => {
-  res.send("Aspect Blockchain BACS Direct Debit setup is running ✅");
+// Health check
+app.get("/", (_req, res) => {
+  res.send("Aspect BACS Direct Debit setup (Stripe-hosted) ✅");
 });
 
-// ✅ Stripe-hosted Customer Portal (for existing Stripe customers)
-app.get("/create-portal-session", async (req, res) => {
+// 🔹 Direct Debit ONLY (Stripe Checkout in setup mode)
+app.get("/create-directdebit-session", async (req, res) => {
   try {
     const { customer_id } = req.query;
+    if (!customer_id) return res.status(400).send("Missing customer_id");
 
-    if (!customer_id) {
-      return res.status(400).send("Missing customer_id in query parameters");
-    }
+    console.log("🧾 Creating Bacs setup session for:", customer_id);
 
-    console.log("🧾 Creating Customer Portal session for:", customer_id);
-
-    // Create a billing portal session for the existing customer
-    const session = await stripe.billingPortal.sessions.create({
-      customer: customer_id,
-      return_url: `${APP_BASE_URL}/success.html`, // Redirect after setup or management
+    const session = await stripe.checkout.sessions.create({
+      mode: "setup",
+      payment_method_types: ["bacs_debit"],
+      customer: customer_id, // existing Stripe customer
+      success_url: `${APP_BASE_URL}/success.html`,
+      cancel_url: `${APP_BASE_URL}/cancel.html`,
     });
 
-    console.log("✅ Portal session created:", session.url);
-
-    // Redirect user directly to their unique Stripe-hosted portal
-    res.redirect(session.url);
+    console.log("✅ Session created:", session.id, session.url);
+    res.redirect(session.url); // <-- send user to Stripe-hosted page
   } catch (err) {
     console.error("❌ Stripe error:", err);
-    res.status(400).send(`Error: ${err.message}`);
+    res.status(400).send(err.message);
   }
 });
 
-// ✅ Start server
 app.listen(PORT, () => {
   console.log(`✅ Server running on ${APP_BASE_URL}`);
 });
