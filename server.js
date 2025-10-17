@@ -39,6 +39,9 @@ app.post("/create-checkout-session", async (req, res) => {
       cancel_url: `${APP_BASE_URL}/cancel.html`,
     });
 
+    // 🧩 Debug line to show full session response
+    console.log("🔎 Full session response:", session);
+
     console.log("✅ Stripe session created:", session.id);
     res.json({ url: session.url });
   } catch (err) {
