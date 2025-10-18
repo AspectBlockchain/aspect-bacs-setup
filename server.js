@@ -3,25 +3,22 @@ import express from "express";
 import Stripe from "stripe";
 import dotenv from "dotenv";
 
-// ✅ Load environment variables
 dotenv.config();
 
 const app = express();
 app.use(express.json());
 app.use(express.static("public"));
 
-// ✅ Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// ✅ Core variables
 const PORT = process.env.PORT || 4242;
 const APP_BASE_URL = process.env.APP_BASE_URL || `http://localhost:${PORT}`;
 const ADMIN_USER = (process.env.ADMIN_USERNAME || "aspectadmin").trim();
 const ADMIN_PASS = (process.env.ADMIN_PASSWORD || "aspectdd").trim();
 
-// ✅ Password protection middleware (secure admin + API routes)
+// ✅ Password-protected middleware for critical routes
 function requireAuth(req, res, next) {
-  const protectedRoutes = ["/admin", "/search-customers", "/create-directdebit-session"];
+  const protectedRoutes = ["/admin", "/create-directdebit-session"];
   if (protectedRoutes.some((r) => req.path.startsWith(r))) {
     const auth = req.headers.authorization;
     if (!auth) {
@@ -33,19 +30,14 @@ function requireAuth(req, res, next) {
     if (type !== "Basic") return res.status(401).send("Invalid auth type");
 
     const [user, pass] = Buffer.from(value, "base64").toString().split(":");
-
-    console.log("🔐 Checking credentials:", { user, pass: "****" });
-    console.log("🔐 Expected:", { expectedUser: ADMIN_USER, expectedPass: "****" });
-
     if (user !== ADMIN_USER || pass !== ADMIN_PASS) {
-      console.warn("❌ Invalid credentials attempt:", user);
+      console.warn("❌ Invalid credentials:", user);
       return res.status(403).send("Forbidden");
     }
   }
   next();
 }
 
-// ✅ Apply auth middleware BEFORE static files (to protect /admin)
 app.use(requireAuth);
 
 // ✅ Health check
@@ -53,19 +45,18 @@ app.get("/", (_req, res) => {
   res.send("Aspect BACS Direct Debit setup — running ✅");
 });
 
-// ✅ Serve admin panel (protected)
+// ✅ Serve admin panel
 app.get("/admin", (req, res) => {
   res.sendFile(new URL("./public/admin.html", import.meta.url).pathname);
 });
 
-// ✅ Search customers by name or email
+// ✅ Public search endpoint (safe to use from admin panel)
 app.get("/search-customers", async (req, res) => {
   try {
     const q = req.query.q?.trim();
     if (!q) return res.json([]);
 
     const customers = await stripe.customers.list({ limit: 100 });
-
     const results = customers.data
       .filter(
         (c) =>
@@ -112,5 +103,5 @@ app.get("/create-directdebit-session", async (req, res) => {
 // ✅ Start server
 app.listen(PORT, () => {
   console.log(`✅ Server running on ${APP_BASE_URL}`);
-  console.log("🔐 Admin login configured as:", ADMIN_USER, "/", ADMIN_PASS ? "****" : "❌ Missing");
+  console.log(`🔐 Admin login: ${ADMIN_USER} / ${ADMIN_PASS ? "****" : "❌ Missing"}`);
 });
