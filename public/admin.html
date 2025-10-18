@@ -4,147 +4,145 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Aspect Blockchain | Direct Debit Admin</title>
-
-  <!-- ✅ Link to branded CSS -->
   <link rel="stylesheet" href="admin.css" />
-
-  <!-- Optional favicon + color -->
-  <link rel="icon" type="image/png" href="https://i.ibb.co/THzh7L1/aspect-logo.png" />
-  <meta name="theme-color" content="#0abfdc">
 </head>
 <body>
-  <!-- ================= NAVBAR ================= -->
+  <!-- ✅ NAVBAR -->
   <nav class="navbar">
     <div class="logo-area">
-      <img src="https://i.ibb.co/THzh7L1/aspect-logo.png" alt="Aspect Blockchain" class="logo" />
+      <img src="aspect-logo.png" alt="Aspect Blockchain Logo" class="logo" />
       <h1>Aspect Blockchain | Direct Debit Admin</h1>
     </div>
     <div class="user-info">Admin Panel</div>
   </nav>
 
-  <!-- ================= MAIN ================= -->
-  <main>
-    <h2>Customer Lookup</h2>
+  <!-- ✅ MAIN CONTAINER -->
+  <main class="container">
+    <!-- 🔍 CUSTOMER LOOKUP -->
+    <section class="card">
+      <h2>Customer Lookup</h2>
+      <input type="text" id="search-query" placeholder="Enter customer name or email" />
+      <button id="search-btn">Search</button>
+      <div id="search-results"></div>
+    </section>
 
-    <form id="search-form">
-      <input type="text" id="searchQuery" placeholder="Enter customer name or email" required />
-      <button type="submit">Search</button>
-    </form>
-
-    <div id="results"></div>
-
-    <h2>Generate Direct Debit Setup Link</h2>
-
-    <form id="link-form">
-      <input type="text" id="customerId" placeholder="Enter Stripe Customer ID (cus_...)" required />
-      <button type="submit">Generate Link</button>
-    </form>
-
-    <div id="link-output"></div>
-    <div id="log" style="margin-top: 30px;"></div>
+    <!-- 🧾 GENERATE DIRECT DEBIT LINK -->
+    <section class="card">
+      <h2>Generate Direct Debit Setup Link</h2>
+      <input type="text" id="customer_id" placeholder="Enter Stripe Customer ID (cus_...)" />
+      <button id="generate-link">Generate Link</button>
+      <p id="link-result" class="result-text"></p>
+    </section>
   </main>
 
-  <!-- ================= FOOTER ================= -->
+  <!-- ✅ FOOTER -->
   <footer>
-    © 2025 Aspect Blockchain Group — Infrastructure | Mining | Logistics
+    <p>© 2025 Aspect Blockchain Group — Infrastructure | Mining | Logistics</p>
   </footer>
 
-  <!-- ================= SCRIPT ================= -->
+  <!-- ✅ JAVASCRIPT -->
   <script>
-    const searchForm = document.getElementById("search-form");
-    const linkForm = document.getElementById("link-form");
-    const resultsDiv = document.getElementById("results");
-    const linkOutput = document.getElementById("link-output");
-    const logDiv = document.getElementById("log");
+    // --- Generate Direct Debit Link ---
+    document.getElementById("generate-link").addEventListener("click", async () => {
+      const customerId = document.getElementById("customer_id").value.trim();
+      const result = document.getElementById("link-result");
 
-    // ---------- LOGIN ----------
-    async function login() {
-      const username = prompt("Enter username:");
-      const password = prompt("Enter password:");
-
-      const res = await fetch("/admin-login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-
-      if (!res.ok) {
-        alert("❌ Invalid credentials.");
-        throw new Error("Unauthorized");
+      if (!customerId) {
+        result.textContent = "⚠️ Please enter a Customer ID.";
+        return;
       }
 
-      const data = await res.json();
-      localStorage.setItem("authToken", data.token);
-    }
-
-    // ---------- SEARCH ----------
-    searchForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const query = document.getElementById("searchQuery").value;
-      resultsDiv.innerHTML = "<p class='loading'>Searching...</p>";
-
+      result.textContent = "⏳ Generating link...";
       try {
-        const res = await fetch(`/search-customers?query=${encodeURIComponent(query)}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` },
-        });
-
-        if (res.status === 401) {
-          await login();
-          return searchForm.dispatchEvent(new Event("submit"));
-        }
-
+        const res = await fetch(`/create-directdebit-session?customer_id=${customerId}`);
         const data = await res.json();
-        if (!data.length) {
-          resultsDiv.innerHTML = "<p>No customers found.</p>";
+
+        if (data.url) {
+          result.innerHTML = `✅ <a href="${data.url}" target="_blank">${data.url}</a>`;
+          saveLinkToHistory(data.url);
+        } else {
+          result.textContent = "⚠️ Failed to generate link.";
+        }
+      } catch (err) {
+        console.error("Error:", err);
+        result.textContent = "❌ Error generating link. Check console.";
+      }
+    });
+
+    // --- Search Customers ---
+    document.getElementById("search-btn").addEventListener("click", async () => {
+      const query = document.getElementById("search-query").value.trim();
+      const resultsContainer = document.getElementById("search-results");
+
+      if (!query) {
+        resultsContainer.innerHTML = "<p>⚠️ Enter a name or email to search.</p>";
+        return;
+      }
+
+      resultsContainer.innerHTML = "<p>⏳ Searching...</p>";
+      try {
+        const res = await fetch(`/search-customers?q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+
+        if (data.length === 0) {
+          resultsContainer.innerHTML = "<p>❌ No customers found.</p>";
           return;
         }
 
-        resultsDiv.innerHTML = data
+        resultsContainer.innerHTML = data
           .map(
             (c) => `
-            <div class="customer-card">
-              <strong>${c.name || "Unnamed Customer"}</strong><br>
-              ${c.email || "No email"}<br>
-              <span>${c.id}</span>
+            <div class="customer">
+              <p><strong>${c.name || "(No name)"}</strong><br>${c.email || ""}</p>
+              <button onclick="copyLink('${c.id}')">Copy Setup Link</button>
             </div>`
           )
           .join("");
       } catch (err) {
-        console.error(err);
-        resultsDiv.innerHTML = "<p class='error'>Error fetching customers.</p>";
+        console.error("Search error:", err);
+        resultsContainer.innerHTML = "<p>❌ Error fetching results.</p>";
       }
     });
 
-    // ---------- GENERATE SETUP LINK ----------
-    linkForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const customerId = document.getElementById("customerId").value;
-      linkOutput.innerHTML = "<p class='loading'>Generating link...</p>";
-
-      try {
-        const res = await fetch(`/create-directdebit-session?customer_id=${customerId}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` },
-        });
-
-        if (res.status === 401) {
-          await login();
-          return linkForm.dispatchEvent(new Event("submit"));
-        }
-
-        const data = await res.json();
-
-        if (data.url) {
-          linkOutput.innerHTML = `
-            <p>✅ Link created:</p>
-            <p><a href="${data.url}" target="_blank">${data.url}</a></p>`;
-        } else {
-          linkOutput.innerHTML = `<p class='error'>⚠️ Failed to generate link.</p>`;
-        }
-      } catch (err) {
-        console.error("Fetch error:", err);
-        linkOutput.innerHTML = "<p class='error'>⚠️ Server error while generating link.</p>";
+    // --- Copy Link Helper ---
+    async function copyLink(customerId) {
+      const res = await fetch(`/create-directdebit-session?customer_id=${customerId}`);
+      const data = await res.json();
+      if (data.url) {
+        navigator.clipboard.writeText(data.url);
+        alert("✅ Link copied to clipboard!");
+        saveLinkToHistory(data.url);
+      } else {
+        alert("⚠️ Failed to generate link.");
       }
-    });
+    }
+
+    // --- Link History (client side only) ---
+    function saveLinkToHistory(url) {
+      let history = JSON.parse(localStorage.getItem("generatedLinks") || "[]");
+      history.unshift({ url, date: new Date().toLocaleString() });
+      history = history.slice(0, 3);
+      localStorage.setItem("generatedLinks", JSON.stringify(history));
+      renderLinkHistory();
+    }
+
+    function renderLinkHistory() {
+      const history = JSON.parse(localStorage.getItem("generatedLinks") || "[]");
+      const container = document.getElementById("link-history");
+      if (!container) return;
+      if (history.length === 0) {
+        container.innerHTML = "<p>No recent links.</p>";
+        return;
+      }
+      container.innerHTML = history
+        .map(
+          (h) =>
+            `<p>🔗 <a href="${h.url}" target="_blank">${h.url}</a><br><small>${h.date}</small></p>`
+        )
+        .join("");
+    }
+
+    window.onload = renderLinkHistory;
   </script>
 </body>
 </html>
