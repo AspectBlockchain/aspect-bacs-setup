@@ -16,9 +16,9 @@ const APP_BASE_URL = process.env.APP_BASE_URL || `http://localhost:${PORT}`;
 const ADMIN_USER = (process.env.ADMIN_USERNAME || "aspectadmin").trim();
 const ADMIN_PASS = (process.env.ADMIN_PASSWORD || "aspectdd").trim();
 
-// ✅ Password-protected middleware for critical routes
+// ✅ Basic Auth middleware for protected routes
 function requireAuth(req, res, next) {
-  const protectedRoutes = ["/admin", "/create-directdebit-session"];
+  const protectedRoutes = ["/admin"];
   if (protectedRoutes.some((r) => req.path.startsWith(r))) {
     const auth = req.headers.authorization;
     if (!auth) {
@@ -50,7 +50,7 @@ app.get("/admin", (req, res) => {
   res.sendFile(new URL("./public/admin.html", import.meta.url).pathname);
 });
 
-// ✅ Public search endpoint (safe to use from admin panel)
+// ✅ Public search endpoint (safe)
 app.get("/search-customers", async (req, res) => {
   try {
     const q = req.query.q?.trim();
@@ -92,7 +92,7 @@ app.get("/create-directdebit-session", async (req, res) => {
       cancel_url: `${APP_BASE_URL}/cancel.html`,
     });
 
-    console.log("✅ Session created:", session.id);
+    console.log("✅ Session created:", session.id, session.url);
     res.json({ url: session.url });
   } catch (err) {
     console.error("❌ Stripe error:", err);
