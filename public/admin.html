@@ -50,7 +50,7 @@
   </head>
   <body>
     <h2>Aspect Blockchain — Direct Debit Link Generator</h2>
-    <p>Enter the customer’s Stripe ID (e.g. <code>cus_ABC123...</code>)</p>
+    <p>Enter the customer's Stripe ID (e.g. <code>cus_ABC123...</code>)</p>
 
     <input type="text" id="customerId" placeholder="Stripe Customer ID" />
     <button id="generateBtn">Generate Setup Link</button>
@@ -62,13 +62,32 @@
     </div>
 
     <script>
+      let savedPassword = null;
+
       document.getElementById("generateBtn").addEventListener("click", async () => {
         const id = document.getElementById("customerId").value.trim();
         if (!id) return alert("Please enter a Stripe Customer ID");
 
+        if (!savedPassword) {
+          savedPassword = prompt("Enter admin password");
+          if (!savedPassword) return alert("Password required");
+        }
+
         try {
-          const res = await fetch(`/create-directdebit-session?customer_id=${id}`);
-          const data = await res.json();
+          const res = await fetch(`/create-directdebit-session?customer_id=${id}`, {
+            headers: {
+              Authorization: "Basic " + btoa("aspectadmin:" + savedPassword),
+            },
+          });
+
+          const text = await res.text();
+          let data;
+          try {
+            data = JSON.parse(text);
+          } catch {
+            console.error("Non-JSON response:", text);
+            throw new Error("Server returned invalid response (likely auth issue)");
+          }
 
           if (!res.ok || !data.url) {
             const errText = data.error || "No checkout URL returned";
@@ -95,6 +114,7 @@
         } catch (err) {
           alert("⚠️ Failed to generate link. Check console for details.");
           console.error("Fetch error:", err);
+          savedPassword = null; // reset on error so you can retry
         }
       });
     </script>
