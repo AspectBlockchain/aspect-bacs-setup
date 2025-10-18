@@ -25,15 +25,24 @@
         border: none;
         cursor: pointer;
         margin-top: 10px;
+        border-radius: 6px;
+      }
+      button:hover {
+        background: #333;
       }
       .result {
         margin-top: 25px;
-        padding: 10px;
+        padding: 15px;
         background: #f4f4f4;
-        border-radius: 5px;
+        border-radius: 8px;
       }
       .hidden {
         display: none;
+      }
+      a.link {
+        color: #007bff;
+        text-decoration: none;
+        word-break: break-all;
       }
     </style>
   </head>
@@ -46,8 +55,8 @@
 
     <div class="result hidden" id="resultBox">
       <p><strong>Generated Link:</strong></p>
-      <p id="resultUrl"></p>
-      <button id="copyBtn">Copy to Clipboard</button>
+      <p><a id="resultUrl" class="link" target="_blank"></a></p>
+      <button id="copyBtn">Copy Link</button>
     </div>
 
     <script>
@@ -56,14 +65,18 @@
         if (!id) return alert("Please enter a Stripe Customer ID");
 
         const res = await fetch(`/create-directdebit-session?customer_id=${id}`);
-        if (!res.ok) {
-          const errText = await res.text();
+        const data = await res.json();
+
+        if (!res.ok || !data.url) {
+          const errText = data.error || "Unknown error";
           return alert("Error: " + errText);
         }
 
-        // Stripe redirects, but since we’re an admin tool we just show the URL
-        const finalUrl = res.url;
-        document.getElementById("resultUrl").innerText = finalUrl;
+        const finalUrl = data.url;
+        const linkEl = document.getElementById("resultUrl");
+        linkEl.href = finalUrl;
+        linkEl.innerText = finalUrl;
+
         document.getElementById("resultBox").classList.remove("hidden");
 
         document.getElementById("copyBtn").onclick = () => {
