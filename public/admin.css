@@ -7,6 +7,7 @@ body {
   text-align: center;
 }
 
+/* ===== NAVBAR ===== */
 .navbar {
   background: linear-gradient(90deg, #0abfdc, #06d79e);
   padding: 14px 24px;
@@ -22,9 +23,10 @@ body {
   gap: 12px;
 }
 
+/* ===== LOGO ===== */
 .logo {
-  width: 42px;
-  height: 42px;
+  width: 46px;
+  height: 46px;
   object-fit: contain;
   filter: drop-shadow(0 0 4px rgba(10, 191, 220, 0.6));
   transition: transform 0.3s ease, filter 0.3s ease;
@@ -35,7 +37,25 @@ body {
   filter: drop-shadow(0 0 12px rgba(6, 215, 158, 0.9));
 }
 
-h1, h2 {
+/* ===== HEADER TEXT ===== */
+.navbar h1 {
+  font-size: 1.25rem;
+  color: #e0e0e0; /* ✅ Light grey for readability */
+  margin: 0;
+  letter-spacing: 0.4px;
+}
+
+.user-info {
+  color: #f4f4f4;
+  font-weight: 600;
+}
+
+/* ===== MAIN ===== */
+main {
+  padding: 40px 20px;
+}
+
+h2 {
   color: #0abfdc;
 }
 
