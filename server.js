@@ -2,24 +2,41 @@
 import express from "express";
 import Stripe from "stripe";
 import dotenv from "dotenv";
+
+// ✅ Load environment variables
 dotenv.config();
 
-const app = express();
+// ✅ Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+// ✅ App setup
+const app = express();
 const PORT = process.env.PORT || 4242;
 const APP_BASE_URL = process.env.APP_BASE_URL || `http://localhost:${PORT}`;
 
 // =============================
 //  BASIC AUTH (Protect admin.html only)
 // =============================
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "aspectsecure";
+const ADMIN_USER = process.env.ADMIN_USER || "aspectadmin";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "aspectdd";
+
 app.get("/admin.html", (req, res, next) => {
-  const auth = req.headers.authorization;
-  if (!auth || auth !== `Basic ${Buffer.from("admin:" + ADMIN_PASSWORD).toString("base64")}`) {
-    res.setHeader("WWW-Authenticate", 'Basic realm="Aspect Admin"');
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    res.setHeader("WWW-Authenticate", 'Basic realm="Aspect Admin Panel"');
     return res.status(401).send("Authentication required");
   }
+
+  const base64Credentials = authHeader.split(" ")[1];
+  const credentials = Buffer.from(base64Credentials, "base64").toString("utf8");
+  const [username, password] = credentials.split(":");
+
+  if (username !== ADMIN_USER || password !== ADMIN_PASSWORD) {
+    res.setHeader("WWW-Authenticate", 'Basic realm="Aspect Admin Panel"');
+    return res.status(401).send("Invalid credentials");
+  }
+
   next();
 });
 
@@ -37,18 +54,19 @@ app.get("/", (_req, res) => {
 });
 
 // =============================
-//  CUSTOMER SEARCH (name/email)
+//  CUSTOMER SEARCH (by name/email)
 // =============================
 app.get("/search-customer", async (req, res) => {
   try {
     const { q } = req.query;
     if (!q) return res.status(400).json({ error: "Missing search query" });
 
-    const listParams = { limit: 20 };
-    if (q.includes("@")) listParams.email = q;
+    const params = { limit: 100 };
+    if (q.includes("@")) params.email = q;
 
-    const customers = await stripe.customers.list(listParams);
+    const customers = await stripe.customers.list(params);
 
+    // Filter manually if searching by name
     const results = customers.data.filter(
       (c) =>
         c.name?.toLowerCase().includes(q.toLowerCase()) ||
