@@ -3,84 +3,146 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Aspect Blockchain — Direct Debit Generator</title>
-  <style>
-    body { font-family: Arial, sans-serif; text-align: center; padding: 40px; background: #f8fafc; color: #222; }
-    input, button { padding: 10px; margin: 8px; width: 280px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; }
-    button { width: 200px; background: #005eff; color: #fff; cursor: pointer; }
-    button:hover { background: #0041c1; }
-    #searchResults div { text-align: left; padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; }
-    #searchResults div:hover { background: #eef3ff; }
-    #log { margin-top: 30px; text-align: left; max-width: 500px; margin-inline: auto; }
-    .container { background: #fff; padding: 30px; max-width: 500px; margin: auto; border-radius: 10px; box-shadow: 0 3px 8px rgba(0,0,0,0.05); }
-    h2 { margin-bottom: 10px; }
-    small { color: #666; }
-  </style>
+  <title>Aspect Blockchain | Direct Debit Admin</title>
+
+  <!-- ✅ Link to branded CSS -->
+  <link rel="stylesheet" href="admin.css" />
+
+  <!-- Optional favicon + color -->
+  <link rel="icon" type="image/png" href="https://i.ibb.co/THzh7L1/aspect-logo.png" />
+  <meta name="theme-color" content="#0abfdc">
 </head>
 <body>
-  <div class="container">
-    <h2>Aspect Blockchain — BACS Setup Panel</h2>
-    <small>Search by name or email to generate customer direct debit link</small>
+  <!-- ================= NAVBAR ================= -->
+  <nav class="navbar">
+    <div class="logo-area">
+      <img src="https://i.ibb.co/THzh7L1/aspect-logo.png" alt="Aspect Blockchain" class="logo" />
+      <h1>Aspect Blockchain | Direct Debit Admin</h1>
+    </div>
+    <div class="user-info">Admin Panel</div>
+  </nav>
 
-    <p><input type="text" id="searchInput" placeholder="Search (e.g. email@... or John)" /></p>
-    <div id="searchResults"></div>
+  <!-- ================= MAIN ================= -->
+  <main>
+    <h2>Customer Lookup</h2>
 
-    <input type="text" id="customerId" placeholder="Stripe Customer ID (auto-fills)" />
-    <br>
-    <button id="generateBtn">Generate Setup Link</button>
+    <form id="search-form">
+      <input type="text" id="searchQuery" placeholder="Enter customer name or email" required />
+      <button type="submit">Search</button>
+    </form>
 
-    <div id="log"></div>
-  </div>
+    <div id="results"></div>
 
+    <h2>Generate Direct Debit Setup Link</h2>
+
+    <form id="link-form">
+      <input type="text" id="customerId" placeholder="Enter Stripe Customer ID (cus_...)" required />
+      <button type="submit">Generate Link</button>
+    </form>
+
+    <div id="link-output"></div>
+    <div id="log" style="margin-top: 30px;"></div>
+  </main>
+
+  <!-- ================= FOOTER ================= -->
+  <footer>
+    © 2025 Aspect Blockchain Group — Infrastructure | Mining | Logistics
+  </footer>
+
+  <!-- ================= SCRIPT ================= -->
   <script>
-    const searchInput = document.getElementById("searchInput");
-    const searchResults = document.getElementById("searchResults");
-    const log = document.getElementById("log");
-    let timeout = null;
+    const searchForm = document.getElementById("search-form");
+    const linkForm = document.getElementById("link-form");
+    const resultsDiv = document.getElementById("results");
+    const linkOutput = document.getElementById("link-output");
+    const logDiv = document.getElementById("log");
 
-    searchInput.addEventListener("input", () => {
-      clearTimeout(timeout);
-      const q = searchInput.value.trim();
-      if (!q) return (searchResults.innerHTML = "");
-      timeout = setTimeout(async () => {
-        try {
-          const res = await fetch(`/search-customer?q=${encodeURIComponent(q)}`);
-          const data = await res.json();
-          if (!Array.isArray(data)) throw new Error(data.error || "No results");
-          searchResults.innerHTML = data
-            .map(
-              (c) => `
-              <div onclick="selectCustomer('${c.id}', '${c.name}', '${c.email}')">
-                <strong>${c.name}</strong> (${c.email})<br><small>${c.id}</small>
-              </div>`
-            )
-            .join("");
-        } catch (err) {
-          searchResults.innerHTML = `<p style="color:red">${err.message}</p>`;
-        }
-      }, 400);
-    });
+    // ---------- LOGIN ----------
+    async function login() {
+      const username = prompt("Enter username:");
+      const password = prompt("Enter password:");
 
-    function selectCustomer(id, name, email) {
-      document.getElementById("customerId").value = id;
-      searchResults.innerHTML = "";
-      searchInput.value = `${name} (${email})`;
+      const res = await fetch("/admin-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+
+      if (!res.ok) {
+        alert("❌ Invalid credentials.");
+        throw new Error("Unauthorized");
+      }
+
+      const data = await res.json();
+      localStorage.setItem("authToken", data.token);
     }
 
-    document.getElementById("generateBtn").addEventListener("click", async () => {
-      const id = document.getElementById("customerId").value.trim();
-      if (!id) return alert("Please select a customer first.");
-      log.innerHTML = "⏳ Generating setup link...";
+    // ---------- SEARCH ----------
+    searchForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const query = document.getElementById("searchQuery").value;
+      resultsDiv.innerHTML = "<p class='loading'>Searching...</p>";
+
       try {
-        const res = await fetch(`/create-directdebit-session?customer_id=${id}`);
+        const res = await fetch(`/search-customers?query=${encodeURIComponent(query)}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` },
+        });
+
+        if (res.status === 401) {
+          await login();
+          return searchForm.dispatchEvent(new Event("submit"));
+        }
+
         const data = await res.json();
+        if (!data.length) {
+          resultsDiv.innerHTML = "<p>No customers found.</p>";
+          return;
+        }
+
+        resultsDiv.innerHTML = data
+          .map(
+            (c) => `
+            <div class="customer-card">
+              <strong>${c.name || "Unnamed Customer"}</strong><br>
+              ${c.email || "No email"}<br>
+              <span>${c.id}</span>
+            </div>`
+          )
+          .join("");
+      } catch (err) {
+        console.error(err);
+        resultsDiv.innerHTML = "<p class='error'>Error fetching customers.</p>";
+      }
+    });
+
+    // ---------- GENERATE SETUP LINK ----------
+    linkForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const customerId = document.getElementById("customerId").value;
+      linkOutput.innerHTML = "<p class='loading'>Generating link...</p>";
+
+      try {
+        const res = await fetch(`/create-directdebit-session?customer_id=${customerId}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` },
+        });
+
+        if (res.status === 401) {
+          await login();
+          return linkForm.dispatchEvent(new Event("submit"));
+        }
+
+        const data = await res.json();
+
         if (data.url) {
-          log.innerHTML = `<p>✅ <strong>Link ready:</strong> <a href="${data.url}" target="_blank">${data.url}</a></p>`;
+          linkOutput.innerHTML = `
+            <p>✅ Link created:</p>
+            <p><a href="${data.url}" target="_blank">${data.url}</a></p>`;
         } else {
-          log.innerHTML = `<p style="color:red">⚠️ Error: ${data.error || "Unknown error"}</p>`;
+          linkOutput.innerHTML = `<p class='error'>⚠️ Failed to generate link.</p>`;
         }
       } catch (err) {
-        log.innerHTML = `<p style="color:red">Error: ${err.message}</p>`;
+        console.error("Fetch error:", err);
+        linkOutput.innerHTML = "<p class='error'>⚠️ Server error while generating link.</p>";
       }
     });
   </script>
