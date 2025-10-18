@@ -3,59 +3,60 @@ import express from "express";
 import Stripe from "stripe";
 import dotenv from "dotenv";
 
-// ✅ Load environment variables
+// Load env variables
 dotenv.config();
 
-// ✅ Initialize Stripe
+const app = express();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// ✅ App setup
-const app = express();
+// Base config
 const PORT = process.env.PORT || 4242;
 const APP_BASE_URL = process.env.APP_BASE_URL || `http://localhost:${PORT}`;
+const ADMIN_USER = process.env.ADMIN_USER?.trim() || "aspectadmin";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD?.trim() || "aspectdd";
 
-// =============================
-//  BASIC AUTH (Protect admin.html only)
-// =============================
-const ADMIN_USER = process.env.ADMIN_USER || "aspectadmin";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "aspectdd";
+// -----------------------------
+// Basic Auth (admin.html only)
+// -----------------------------
+app.use((req, res, next) => {
+  // Protect only admin.html and /admin routes
+  if (req.path === "/admin.html" || req.path.startsWith("/admin")) {
+    const authHeader = req.headers.authorization;
 
-app.get("/admin.html", (req, res, next) => {
-  const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      res.setHeader("WWW-Authenticate", 'Basic realm="Aspect Admin"');
+      return res.status(401).send("Authentication required");
+    }
 
-  if (!authHeader) {
-    res.setHeader("WWW-Authenticate", 'Basic realm="Aspect Admin Panel"');
-    return res.status(401).send("Authentication required");
-  }
+    const base64Credentials = authHeader.split(" ")[1];
+    const credentials = Buffer.from(base64Credentials, "base64").toString("utf8");
+    const [username, password] = credentials.split(":");
 
-  const base64Credentials = authHeader.split(" ")[1];
-  const credentials = Buffer.from(base64Credentials, "base64").toString("utf8");
-  const [username, password] = credentials.split(":");
-
-  if (username !== ADMIN_USER || password !== ADMIN_PASSWORD) {
-    res.setHeader("WWW-Authenticate", 'Basic realm="Aspect Admin Panel"');
-    return res.status(401).send("Invalid credentials");
+    if (username !== ADMIN_USER || password !== ADMIN_PASSWORD) {
+      res.setHeader("WWW-Authenticate", 'Basic realm="Aspect Admin"');
+      return res.status(401).send("Invalid credentials");
+    }
   }
 
   next();
 });
 
-// =============================
-//  STATIC FRONTEND
-// =============================
+// -----------------------------
+// Static + JSON parsing
+// -----------------------------
 app.use(express.static("public"));
 app.use(express.json());
 
-// =============================
-//  HEALTH CHECK
-// =============================
+// -----------------------------
+// Health check
+// -----------------------------
 app.get("/", (_req, res) => {
   res.send("✅ Aspect BACS Direct Debit setup — Live and running");
 });
 
-// =============================
-//  CUSTOMER SEARCH (by name/email)
-// =============================
+// -----------------------------
+// Search Customer by Email/Name
+// -----------------------------
 app.get("/search-customer", async (req, res) => {
   try {
     const { q } = req.query;
@@ -65,8 +66,6 @@ app.get("/search-customer", async (req, res) => {
     if (q.includes("@")) params.email = q;
 
     const customers = await stripe.customers.list(params);
-
-    // Filter manually if searching by name
     const results = customers.data.filter(
       (c) =>
         c.name?.toLowerCase().includes(q.toLowerCase()) ||
@@ -81,14 +80,14 @@ app.get("/search-customer", async (req, res) => {
       }))
     );
   } catch (err) {
-    console.error("❌ Customer search error:", err);
+    console.error("❌ Search error:", err);
     res.status(400).json({ error: err.message });
   }
 });
 
-// =============================
-//  GENERATE DIRECT DEBIT SETUP LINK
-// =============================
+// -----------------------------
+// Generate Direct Debit Setup Link
+// -----------------------------
 app.get("/create-directdebit-session", async (req, res) => {
   try {
     const { customer_id } = req.query;
@@ -112,9 +111,9 @@ app.get("/create-directdebit-session", async (req, res) => {
   }
 });
 
-// =============================
-//  START SERVER
-// =============================
+// -----------------------------
+// Start Server
+// -----------------------------
 app.listen(PORT, () => {
-  console.log(`🚀 Server running at ${APP_BASE_URL}`);
+  console.log(`🚀 Server running on ${APP_BASE_URL}`);
 });
