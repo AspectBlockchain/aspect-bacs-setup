@@ -1,29 +1,19 @@
-/* Aspect Blockchain Admin Panel - Branded Theme */
-
-:root {
-  --aspect-cyan: #0abfdc;
-  --aspect-green: #06d79e;
-  --aspect-dark: #28292b;
-  --text-light: #f5f5f5;
-  --text-dim: #b7b7b7;
-}
-
 body {
-  font-family: 'Inter', 'Segoe UI', sans-serif;
-  background-color: var(--aspect-dark);
-  color: var(--text-light);
+  background: #28292b;
+  color: white;
+  font-family: "Inter", sans-serif;
   margin: 0;
   padding: 0;
+  text-align: center;
 }
 
-/* ================= NAVBAR ================= */
 .navbar {
+  background: linear-gradient(90deg, #0abfdc, #06d79e);
+  padding: 14px 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(90deg, var(--aspect-cyan), var(--aspect-green));
-  padding: 14px 30px;
-  box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
 }
 
 .logo-area {
@@ -33,111 +23,68 @@ body {
 }
 
 .logo {
-  height: 38px;
-  width: auto;
-  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.4));
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 4px rgba(10, 191, 220, 0.6));
+  transition: transform 0.3s ease, filter 0.3s ease;
 }
 
-.navbar h1 {
-  font-size: 1.2rem;
-  color: #fff;
-  letter-spacing: 0.5px;
+.logo:hover {
+  transform: scale(1.07);
+  filter: drop-shadow(0 0 12px rgba(6, 215, 158, 0.9));
 }
 
-.user-info {
-  font-size: 0.95rem;
-  color: #fff;
-  opacity: 0.9;
+h1, h2 {
+  color: #0abfdc;
 }
 
-/* ================= MAIN ================= */
-main {
-  padding: 50px 25px;
-  max-width: 850px;
-  margin: 0 auto;
-}
-
-h2 {
-  color: var(--aspect-cyan);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: 5px;
-  margin-bottom: 20px;
-}
-
-form {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-
-input {
-  flex: 1;
-  padding: 12px;
-  border-radius: 8px;
-  border: none;
-  background-color: #1d1e20;
-  color: var(--text-light);
-  outline: none;
-  transition: 0.2s;
-}
-
-input:focus {
-  box-shadow: 0 0 0 2px var(--aspect-cyan);
-}
-
-/* ================= BUTTONS ================= */
 button {
-  background: linear-gradient(135deg, var(--aspect-cyan), var(--aspect-green));
+  background: linear-gradient(90deg, #0abfdc, #06d79e);
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   color: white;
-  padding: 12px 20px;
-  font-weight: 600;
+  font-weight: bold;
+  padding: 10px 20px;
   cursor: pointer;
-  transition: 0.25s ease;
+  transition: all 0.25s ease;
 }
 
 button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 0 10px rgba(6, 215, 158, 0.4);
-  opacity: 0.95;
+  transform: scale(1.05);
+  box-shadow: 0 0 15px rgba(10, 191, 220, 0.7);
 }
 
-/* ================= CUSTOMER CARDS ================= */
+input {
+  border: 1px solid #0abfdc;
+  background: #1f1f20;
+  color: white;
+  padding: 10px;
+  border-radius: 6px;
+  width: 260px;
+  margin: 6px;
+}
+
 .customer-card {
-  background: #1c1d1f;
-  border: 1px solid #333;
-  border-radius: 10px;
-  padding: 14px 18px;
-  margin-bottom: 10px;
-  transition: 0.2s ease;
+  background: #1e1e1f;
+  padding: 12px;
+  border-radius: 6px;
+  margin: 10px auto;
+  max-width: 400px;
+  border: 1px solid #0abfdc40;
+  transition: all 0.3s ease;
 }
 
 .customer-card:hover {
-  border-color: var(--aspect-cyan);
-  box-shadow: 0 0 6px rgba(10, 191, 220, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 0 10px rgba(10, 191, 220, 0.4);
 }
 
-.customer-card span {
-  color: var(--aspect-green);
-  font-family: monospace;
-}
-
-/* ================= FEEDBACK ================= */
-.loading {
-  color: var(--aspect-cyan);
-}
-
-.error {
-  color: #ff5b5b;
-}
-
-/* ================= FOOTER ================= */
 footer {
-  text-align: center;
-  padding: 25px;
-  color: var(--text-dim);
-  font-size: 0.85rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background: #1f1f20;
+  color: #aaa;
+  padding: 20px 0;
   margin-top: 60px;
+  font-size: 0.9rem;
+  border-top: 1px solid #0abfdc20;
 }
