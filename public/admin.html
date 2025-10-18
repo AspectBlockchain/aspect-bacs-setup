@@ -6,7 +6,7 @@
     <style>
       body {
         font-family: "Inter", sans-serif;
-        max-width: 600px;
+        max-width: 700px;
         margin: 60px auto;
         text-align: center;
         color: #222;
@@ -46,6 +46,33 @@
         text-decoration: none;
         word-break: break-all;
       }
+      #logContainer {
+        margin-top: 40px;
+        text-align: left;
+        background: #fafafa;
+        border-radius: 8px;
+        padding: 20px;
+        border: 1px solid #ddd;
+      }
+      #logContainer h3 {
+        margin-top: 0;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th, td {
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+        font-size: 14px;
+      }
+      th {
+        background: #f0f0f0;
+        text-align: left;
+      }
+      td a {
+        color: #007bff;
+      }
     </style>
   </head>
   <body>
@@ -61,6 +88,23 @@
       <button id="copyBtn">Copy Link</button>
     </div>
 
+    <!-- ✅ Log panel -->
+    <div id="logContainer">
+      <h3>Generated Link Log</h3>
+      <table id="logTable">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Customer ID</th>
+            <th>Link</th>
+          </tr>
+        </thead>
+        <tbody id="logBody">
+          <tr><td colspan="3" style="text-align:center;color:#888;">No links yet</td></tr>
+        </tbody>
+      </table>
+    </div>
+
     <script>
       let savedPassword = null;
 
@@ -74,50 +118,51 @@
         }
 
         try {
-          const res = await fetch(`/create-directdebit-session?customer_id=${id}`, {
-            headers: {
-              Authorization: "Basic " + btoa("aspectadmin:" + savedPassword),
-            },
-          });
+          const res = await fetch(`/create-directdebit-session?customer_id=${id}`);
+          if (!res.ok) throw new Error(await res.text());
+          const data = await res.json();
 
-          const text = await res.text();
-          let data;
-
-          try {
-            data = JSON.parse(text);
-          } catch {
-            console.error("Non-JSON response:", text);
-            throw new Error("Server returned invalid response (likely auth issue)");
-          }
-
-          if (!res.ok || !data.url) {
-            const errText = data.error || "No checkout URL returned";
-            alert("Error: " + errText);
-            console.error("Server response:", data);
-            return;
-          }
+          if (!data.url) throw new Error("No checkout URL returned");
 
           const finalUrl = data.url;
           console.log("✅ Stripe link generated:", finalUrl);
 
+          // Show the generated link
           const resultBox = document.getElementById("resultBox");
           resultBox.classList.remove("hidden");
-
           const linkEl = document.getElementById("resultUrl");
           linkEl.href = finalUrl;
           linkEl.innerText = finalUrl;
 
-          const copyBtn = document.getElementById("copyBtn");
-          copyBtn.onclick = () => {
+          document.getElementById("copyBtn").onclick = () => {
             navigator.clipboard.writeText(finalUrl);
             alert("✅ Link copied to clipboard!");
           };
+
+          // Add to log
+          addLogEntry(id, finalUrl);
         } catch (err) {
           alert("⚠️ Failed to generate link. " + err.message);
           console.error("Fetch error:", err);
-          savedPassword = null; // reset password on error
+          savedPassword = null;
         }
       });
+
+      function addLogEntry(customerId, url) {
+        const logBody = document.getElementById("logBody");
+        if (logBody.children.length === 1 && logBody.children[0].innerText.includes("No links yet")) {
+          logBody.innerHTML = "";
+        }
+
+        const tr = document.createElement("tr");
+        const now = new Date().toLocaleTimeString();
+        tr.innerHTML = `
+          <td>${now}</td>
+          <td>${customerId}</td>
+          <td><a href="${url}" target="_blank">${url}</a></td>
+        `;
+        logBody.prepend(tr);
+      }
     </script>
   </body>
 </html>
