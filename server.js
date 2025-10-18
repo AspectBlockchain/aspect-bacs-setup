@@ -2,12 +2,9 @@
 import express from "express";
 import Stripe from "stripe";
 import dotenv from "dotenv";
-
 dotenv.config();
 
 const app = express();
-app.use(express.static("public"));
-app.use(express.json());
 
 // ✅ Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -18,8 +15,8 @@ const APP_BASE_URL = process.env.APP_BASE_URL || `http://localhost:${PORT}`;
 const ADMIN_USER = process.env.ADMIN_USERNAME || "aspectadmin";
 const ADMIN_PASS = process.env.ADMIN_PASSWORD || "aspectdd";
 
-// ✅ Basic auth middleware (for admin + API routes)
-app.use((req, res, next) => {
+// ✅ Password protection middleware (secure admin + API routes)
+function requireAuth(req, res, next) {
   const protectedRoutes = ["/admin", "/search-customers", "/create-directdebit-session"];
   if (protectedRoutes.some((r) => req.path.startsWith(r))) {
     const auth = req.headers.authorization;
@@ -34,15 +31,22 @@ app.use((req, res, next) => {
       return res.status(403).send("Forbidden");
   }
   next();
-});
+}
+
+// ✅ Apply auth check BEFORE serving static files
+app.use(requireAuth);
+
+// ✅ Serve static files (for success.html, cancel.html, etc.)
+app.use(express.static("public"));
+app.use(express.json());
 
 // ✅ Health check
 app.get("/", (_req, res) => {
   res.send("Aspect BACS Direct Debit setup — running ✅");
 });
 
-// ✅ Serve admin panel
-app.get("/admin", (_req, res) => {
+// ✅ Serve admin panel (protected by auth)
+app.get("/admin", (req, res) => {
   res.sendFile(new URL("./public/admin.html", import.meta.url).pathname);
 });
 
@@ -52,10 +56,7 @@ app.get("/search-customers", async (req, res) => {
     const q = req.query.q?.trim();
     if (!q) return res.json([]);
 
-    // 🔹 Fetch first 100 customers from Stripe
     const customers = await stripe.customers.list({ limit: 100 });
-
-    // 🔹 Case-insensitive filter
     const results = customers.data
       .filter(
         (c) =>
