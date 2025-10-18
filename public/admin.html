@@ -82,6 +82,7 @@
 
           const text = await res.text();
           let data;
+
           try {
             data = JSON.parse(text);
           } catch {
@@ -112,9 +113,9 @@
             alert("✅ Link copied to clipboard!");
           };
         } catch (err) {
-          alert("⚠️ Failed to generate link. Check console for details.");
+          alert("⚠️ Failed to generate link. " + err.message);
           console.error("Fetch error:", err);
-          savedPassword = null; // reset on error so you can retry
+          savedPassword = null; // reset password on error
         }
       });
     </script>
