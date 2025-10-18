@@ -16,6 +16,8 @@
         padding: 10px;
         font-size: 16px;
         margin: 10px 0;
+        border: 1px solid #ccc;
+        border-radius: 5px;
       }
       button {
         background: #000;
@@ -64,25 +66,36 @@
         const id = document.getElementById("customerId").value.trim();
         if (!id) return alert("Please enter a Stripe Customer ID");
 
-        const res = await fetch(`/create-directdebit-session?customer_id=${id}`);
-        const data = await res.json();
+        try {
+          const res = await fetch(`/create-directdebit-session?customer_id=${id}`);
+          const data = await res.json();
 
-        if (!res.ok || !data.url) {
-          const errText = data.error || "Unknown error";
-          return alert("Error: " + errText);
+          if (!res.ok || !data.url) {
+            const errText = data.error || "No checkout URL returned";
+            alert("Error: " + errText);
+            console.error("Server response:", data);
+            return;
+          }
+
+          const finalUrl = data.url;
+          console.log("✅ Stripe link generated:", finalUrl);
+
+          const resultBox = document.getElementById("resultBox");
+          resultBox.classList.remove("hidden");
+
+          const linkEl = document.getElementById("resultUrl");
+          linkEl.href = finalUrl;
+          linkEl.innerText = finalUrl;
+
+          const copyBtn = document.getElementById("copyBtn");
+          copyBtn.onclick = () => {
+            navigator.clipboard.writeText(finalUrl);
+            alert("✅ Link copied to clipboard!");
+          };
+        } catch (err) {
+          alert("⚠️ Failed to generate link. Check console for details.");
+          console.error("Fetch error:", err);
         }
-
-        const finalUrl = data.url;
-        const linkEl = document.getElementById("resultUrl");
-        linkEl.href = finalUrl;
-        linkEl.innerText = finalUrl;
-
-        document.getElementById("resultBox").classList.remove("hidden");
-
-        document.getElementById("copyBtn").onclick = () => {
-          navigator.clipboard.writeText(finalUrl);
-          alert("Copied to clipboard!");
-        };
       });
     </script>
   </body>
