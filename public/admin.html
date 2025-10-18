@@ -1,168 +1,88 @@
-<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Aspect Blockchain | Direct Debit Link Generator</title>
-    <style>
-      body {
-        font-family: "Inter", sans-serif;
-        max-width: 700px;
-        margin: 60px auto;
-        text-align: center;
-        color: #222;
-      }
-      input {
-        width: 90%;
-        padding: 10px;
-        font-size: 16px;
-        margin: 10px 0;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-      }
-      button {
-        background: #000;
-        color: #fff;
-        padding: 12px 20px;
-        font-size: 16px;
-        border: none;
-        cursor: pointer;
-        margin-top: 10px;
-        border-radius: 6px;
-      }
-      button:hover {
-        background: #333;
-      }
-      .result {
-        margin-top: 25px;
-        padding: 15px;
-        background: #f4f4f4;
-        border-radius: 8px;
-      }
-      .hidden {
-        display: none;
-      }
-      a.link {
-        color: #007bff;
-        text-decoration: none;
-        word-break: break-all;
-      }
-      #logContainer {
-        margin-top: 40px;
-        text-align: left;
-        background: #fafafa;
-        border-radius: 8px;
-        padding: 20px;
-        border: 1px solid #ddd;
-      }
-      #logContainer h3 {
-        margin-top: 0;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-      }
-      th, td {
-        padding: 10px;
-        border-bottom: 1px solid #eee;
-        font-size: 14px;
-      }
-      th {
-        background: #f0f0f0;
-        text-align: left;
-      }
-      td a {
-        color: #007bff;
-      }
-    </style>
-  </head>
-  <body>
-    <h2>Aspect Blockchain — Direct Debit Link Generator</h2>
-    <p>Enter the customer's Stripe ID (e.g. <code>cus_ABC123...</code>)</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aspect Blockchain — Direct Debit Generator</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 40px; background: #f8fafc; color: #222; }
+    input, button { padding: 10px; margin: 8px; width: 280px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; }
+    button { width: 200px; background: #005eff; color: #fff; cursor: pointer; }
+    button:hover { background: #0041c1; }
+    #searchResults div { text-align: left; padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; }
+    #searchResults div:hover { background: #eef3ff; }
+    #log { margin-top: 30px; text-align: left; max-width: 500px; margin-inline: auto; }
+    .container { background: #fff; padding: 30px; max-width: 500px; margin: auto; border-radius: 10px; box-shadow: 0 3px 8px rgba(0,0,0,0.05); }
+    h2 { margin-bottom: 10px; }
+    small { color: #666; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Aspect Blockchain — BACS Setup Panel</h2>
+    <small>Search by name or email to generate customer direct debit link</small>
 
-    <input type="text" id="customerId" placeholder="Stripe Customer ID" />
+    <p><input type="text" id="searchInput" placeholder="Search (e.g. cemal@... or Linda)" /></p>
+    <div id="searchResults"></div>
+
+    <input type="text" id="customerId" placeholder="Stripe Customer ID (auto-fills)" />
+    <br>
     <button id="generateBtn">Generate Setup Link</button>
 
-    <div class="result hidden" id="resultBox">
-      <p><strong>Generated Link:</strong></p>
-      <p><a id="resultUrl" class="link" target="_blank"></a></p>
-      <button id="copyBtn">Copy Link</button>
-    </div>
+    <div id="log"></div>
+  </div>
 
-    <!-- ✅ Log panel -->
-    <div id="logContainer">
-      <h3>Generated Link Log</h3>
-      <table id="logTable">
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>Customer ID</th>
-            <th>Link</th>
-          </tr>
-        </thead>
-        <tbody id="logBody">
-          <tr><td colspan="3" style="text-align:center;color:#888;">No links yet</td></tr>
-        </tbody>
-      </table>
-    </div>
+  <script>
+    const searchInput = document.getElementById("searchInput");
+    const searchResults = document.getElementById("searchResults");
+    const log = document.getElementById("log");
+    let timeout = null;
 
-    <script>
-      let savedPassword = null;
-
-      document.getElementById("generateBtn").addEventListener("click", async () => {
-        const id = document.getElementById("customerId").value.trim();
-        if (!id) return alert("Please enter a Stripe Customer ID");
-
-        if (!savedPassword) {
-          savedPassword = prompt("Enter admin password");
-          if (!savedPassword) return alert("Password required");
-        }
-
+    searchInput.addEventListener("input", () => {
+      clearTimeout(timeout);
+      const q = searchInput.value.trim();
+      if (!q) return (searchResults.innerHTML = "");
+      timeout = setTimeout(async () => {
         try {
-          const res = await fetch(`/create-directdebit-session?customer_id=${id}`);
-          if (!res.ok) throw new Error(await res.text());
+          const res = await fetch(`/search-customer?q=${encodeURIComponent(q)}`);
           const data = await res.json();
-
-          if (!data.url) throw new Error("No checkout URL returned");
-
-          const finalUrl = data.url;
-          console.log("✅ Stripe link generated:", finalUrl);
-
-          // Show the generated link
-          const resultBox = document.getElementById("resultBox");
-          resultBox.classList.remove("hidden");
-          const linkEl = document.getElementById("resultUrl");
-          linkEl.href = finalUrl;
-          linkEl.innerText = finalUrl;
-
-          document.getElementById("copyBtn").onclick = () => {
-            navigator.clipboard.writeText(finalUrl);
-            alert("✅ Link copied to clipboard!");
-          };
-
-          // Add to log
-          addLogEntry(id, finalUrl);
+          if (!Array.isArray(data)) throw new Error(data.error || "No results");
+          searchResults.innerHTML = data
+            .map(
+              (c) => `
+              <div onclick="selectCustomer('${c.id}', '${c.name}', '${c.email}')">
+                <strong>${c.name}</strong> (${c.email})<br><small>${c.id}</small>
+              </div>`
+            )
+            .join("");
         } catch (err) {
-          alert("⚠️ Failed to generate link. " + err.message);
-          console.error("Fetch error:", err);
-          savedPassword = null;
+          searchResults.innerHTML = `<p style="color:red">${err.message}</p>`;
         }
-      });
+      }, 400);
+    });
 
-      function addLogEntry(customerId, url) {
-        const logBody = document.getElementById("logBody");
-        if (logBody.children.length === 1 && logBody.children[0].innerText.includes("No links yet")) {
-          logBody.innerHTML = "";
+    function selectCustomer(id, name, email) {
+      document.getElementById("customerId").value = id;
+      searchResults.innerHTML = "";
+      searchInput.value = `${name} (${email})`;
+    }
+
+    document.getElementById("generateBtn").addEventListener("click", async () => {
+      const id = document.getElementById("customerId").value.trim();
+      if (!id) return alert("Please select a customer first.");
+      log.innerHTML = "⏳ Generating setup link...";
+      try {
+        const res = await fetch(`/create-directdebit-session?customer_id=${id}`);
+        const data = await res.json();
+        if (data.url) {
+          log.innerHTML = `<p>✅ <strong>Link ready:</strong> <a href="${data.url}" target="_blank">${data.url}</a></p>`;
+        } else {
+          log.innerHTML = `<p style="color:red">⚠️ Error: ${data.error || "Unknown error"}</p>`;
         }
-
-        const tr = document.createElement("tr");
-        const now = new Date().toLocaleTimeString();
-        tr.innerHTML = `
-          <td>${now}</td>
-          <td>${customerId}</td>
-          <td><a href="${url}" target="_blank">${url}</a></td>
-        `;
-        logBody.prepend(tr);
+      } catch (err) {
+        log.innerHTML = `<p style="color:red">Error: ${err.message}</p>`;
       }
-    </script>
-  </body>
+    });
+  </script>
+</body>
 </html>
