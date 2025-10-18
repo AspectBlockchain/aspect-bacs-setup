@@ -1,0 +1,76 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Aspect Blockchain | Direct Debit Link Generator</title>
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+        max-width: 600px;
+        margin: 60px auto;
+        text-align: center;
+        color: #222;
+      }
+      input {
+        width: 90%;
+        padding: 10px;
+        font-size: 16px;
+        margin: 10px 0;
+      }
+      button {
+        background: #000;
+        color: #fff;
+        padding: 12px 20px;
+        font-size: 16px;
+        border: none;
+        cursor: pointer;
+        margin-top: 10px;
+      }
+      .result {
+        margin-top: 25px;
+        padding: 10px;
+        background: #f4f4f4;
+        border-radius: 5px;
+      }
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Aspect Blockchain — Direct Debit Link Generator</h2>
+    <p>Enter the customer’s Stripe ID (e.g. <code>cus_ABC123...</code>)</p>
+
+    <input type="text" id="customerId" placeholder="Stripe Customer ID" />
+    <button id="generateBtn">Generate Setup Link</button>
+
+    <div class="result hidden" id="resultBox">
+      <p><strong>Generated Link:</strong></p>
+      <p id="resultUrl"></p>
+      <button id="copyBtn">Copy to Clipboard</button>
+    </div>
+
+    <script>
+      document.getElementById("generateBtn").addEventListener("click", async () => {
+        const id = document.getElementById("customerId").value.trim();
+        if (!id) return alert("Please enter a Stripe Customer ID");
+
+        const res = await fetch(`/create-directdebit-session?customer_id=${id}`);
+        if (!res.ok) {
+          const errText = await res.text();
+          return alert("Error: " + errText);
+        }
+
+        // Stripe redirects, but since we’re an admin tool we just show the URL
+        const finalUrl = res.url;
+        document.getElementById("resultUrl").innerText = finalUrl;
+        document.getElementById("resultBox").classList.remove("hidden");
+
+        document.getElementById("copyBtn").onclick = () => {
+          navigator.clipboard.writeText(finalUrl);
+          alert("Copied to clipboard!");
+        };
+      });
+    </script>
+  </body>
+</html>
